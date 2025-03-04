@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Supervisory Level Waiting{% endblock %}
+
+{% block content %}
+  <body style="margin: 0px 1px;">
+    <div class="auto-container">
+      <header>
+        <h1>Supervisory Control Level</h1>
+        <h3>Please wait, the invoice verification is being performed...</h3>
+        <div class="loader"></div>
+      </header>
+      <div class="pdf-view">
+        <h3>Purchase Order</h3>
+        <embed src="/show_purchase" type="application/pdf" width="100%" height="1600px" />
+      </div>
+      <div class="pdf-view">
+        <h3>Invoice</h3>
+        <embed src="/show_invoice" type="application/pdf" width="100%" height="1600px" />
+      </div>
+    </div>
+  </body>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      fetch("/supervisory_control_process", { 
+        method: "POST" 
+      })
+      .then(response => response.json())
+      .then(data => {
+         window.location.href = data.redirect_url;
+      })
+      .catch(error => console.error("Error during processing:", error));
+    });
+  </script>
+
+  {# Code for the modal view #}
+  <button class="help-btn" onclick="openHelpModal()">Help</button>
+
+  <script>
+    function openHelpModal() {
+      if (document.getElementById("helpModal")) {
+        document.getElementById("helpModal").style.display = "flex";
+        return;
+      }
+
+      const helpModal = document.createElement("div");
+      helpModal.id = "helpModal";
+      helpModal.className = "modal";
+      helpModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close" onclick="closeHelpModal()">&#10006;</span> 
+          <h1>Supervisory Control Level - Explanation</h1>
+          <p id="helpText">Loading help...</p>
+        </div>
+      `;
+      document.body.appendChild(helpModal);
+
+      const helpText = document.getElementById("helpText");
+      const pageTitle = document.title.toLowerCase();
+
+      helpText.innerHTML = `
+         <h2>Basic invoice requirements:</h2>
+         <p>The following elements are essential for an invoice to be valid:</p>
+         <ul>
+             <li>Full name of the issuer</li>
+             <li>Order ID</li>
+             <li>Issue date / service date (we assume issue date = service date)</li>
+             <li>Quantity and description of delivered products</li>
+         </ul>
+         <p>If any of these details are missing, the invoice must be <strong>declined</strong>.</p>
+         
+         <h2>Handling minor issues:</h2>
+         <p>Minor mistakes, such as:</p>
+         <ul>
+             <li>Typographical errors</li>
+             <li>Swapped digits</li>
+         </ul>
+         <p>can be corrected, and the invoice may still be submitted.</p>
+         
+         <h2>Critical issues requiring rejection:</h2>
+         <p>The following issues <strong>must</strong> result in invoice rejection:</p>
+         <ul>
+             <li>Missing essential details as listed above</li>
+             <li>Incorrect total price</li>
+         </ul>
+         <p>Beyond these rules, it is your responsibility to decide whether an invoice should be submitted or declined.</p>
+      `;
+      helpModal.style.display = "flex";
+    }
+
+    function closeHelpModal() {
+      document.getElementById("helpModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("helpModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script>
+{% endblock %}

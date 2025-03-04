@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Assistive Level Explanation{% endblock %}
+
+{% block content %}
+  <div class="explanation-container">
+    <h1>Assistive Level - Explanation</h1>
+    
+    <div class="explanation-intro">
+      <p>
+        In the <strong>Assistive Level</strong>, you will manually verify and process <strong>3</strong> invoices by comparing them with the corresponding purchase orders.
+      </p>
+      <p>
+        In addition, the AI provides hints about potential issues.
+      </p>
+    </div>
+    
+    {# Explanation of the workflow #}
+    <h2>How it works:</h2>
+    <ul>
+      <li>You will see two documents: the <strong>purchase order</strong> on the left and the <strong>invoice</strong> on the right.</li>
+      <li>Check the invoice for inconsistencies.</li>
+      <li>If you find some, use the <strong>"+"</strong> button to document the issue and add a correction and/or a note.</li>
+      <li>Based on the severity of the issues, decide whether the invoice should be <strong>submitted</strong> or <strong>declined</strong>.</li>
+      <li><strong>Every identified issue must be recorded.</strong></li>
+    </ul>
+    
+    <h2>Basic invoice requirements:</h2>
+    <p>The following elements are essential for an invoice to be valid:</p>
+    <ul>
+      <li>Full name of the issuer</li>
+      <li>Order ID</li>
+      <li>Order Date</li>
+      <li>Quantity and description of delivered products</li>
+    </ul>
+    <p>If any of these details are missing, the invoice must be <strong>declined</strong>.</p>
+    
+    <h2>Handling minor issues:</h2>
+    <p>Minor mistakes, such as:</p>
+    <ul>
+      <li>Typographical errors</li>
+      <li>Swapped digits</li>
+    </ul>
+    <p>can be corrected, and the invoice may still be submitted.</p>
+    
+    <h2>Critical issues requiring rejection:</h2>
+    <p>The following issues <strong>must</strong> result in invoice rejection:</p>
+    <ul>
+      <li>Missing essential details as listed above</li>
+      <li>Incorrect total price</li>
+    </ul>
+    <p>Beyond these rules, it is your responsibility to decide whether an invoice should be submitted or declined.</p>
+    
+    <br>
+    <div class="explain-startbutton-text">Click on the start button below to begin:</div>
+    <div class="button-item">
+      <a class="button" href="/assistive">Start</a>
+    </div>
+  </div>
+{% endblock %}

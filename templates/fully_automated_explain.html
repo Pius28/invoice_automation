@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Fully Automated Level Explanation
+{% endblock %}
+
+{% block content %}
+  <div class="explanation-container">
+    <h1>Fully Automated Level - Explanation</h1>
+    <div class="explanation-intro">
+      <p>
+        In the <strong>Fully Automated Level</strong>, the AI will process <strong>3</strong> invoices
+        and independently decide whether to submit or decline them.
+        You don't need to take any action, but you can view the invoices while the AI is working on them.
+      </p>
+    </div>
+    <h2>How it works:</h2>
+    <ul>
+      <li>
+        You will see two documents: the <strong>purchase order</strong> on the left and the <strong>invoice</strong> on the right, but you cannot interact with them.
+      </li>
+      <li>The AI handles the entire process automatically.</li>
+      <li>While the AI is processing an invoice, you can view the invoices.</li>
+    </ul>
+    <br>
+    <div class="explain-startbutton-text">
+      Click on the start button below to begin:
+    </div>
+    <div class="button-item">
+      <a class="button" href="/fully_automated">Start</a>
+    </div>
+  </div>
+{% endblock %}

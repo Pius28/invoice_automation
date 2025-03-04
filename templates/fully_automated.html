@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Fully Automated Level{% endblock %}
+
+{% block content %}
+  <body style="margin: 0px 1px;">
+    <div class="auto-container">
+      <header>
+        <h1>Fully Automated Level</h1>
+        <h3>Please wait, the invoice verification is being performed...</h3>
+        <div class="loader"></div>
+      </header>
+      
+      <div class="pdf-view">
+        <h3>Purchase Order</h3>
+        <embed src="/show_purchase" type="application/pdf" width="100%" height="1600px" />
+      </div>
+      
+      <div class="pdf-view">
+        <h3>Invoice</h3>
+        <embed src="/show_invoice" type="application/pdf" width="100%" height="1600px" />
+      </div>
+    </div>
+  </body>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      fetch("/fully_automated_process", { method: "POST" })
+        .then(response => response.json())
+        .then(data => {
+          window.location.href = data.redirect_url;
+        })
+        .catch(error => console.error("Error during processing:", error));
+    });
+  </script>
+
+  {# Code for the modal view #}
+  <button class="help-btn" onclick="openHelpModal()">Help</button>
+
+  <script>
+    function openHelpModal() {
+      if (document.getElementById("helpModal")) {
+        document.getElementById("helpModal").style.display = "flex";
+        return;
+      }
+
+      const helpModal = document.createElement("div");
+      helpModal.id = "helpModal";
+      helpModal.className = "modal";
+      helpModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close" onclick="closeHelpModal()">&#10006;</span>
+          <h1>Fully Automated Level - Explanation</h1>
+          <p id="helpText">Loading help...</p>
+        </div>
+      `;
+      document.body.appendChild(helpModal);
+
+      const helpText = document.getElementById("helpText");
+      helpText.innerHTML = `
+         <h2>How it works:</h2>
+         <ul>
+           <li>The purchase order is displayed on the left and the invoice on the right.</li>
+           <li>The AI automatically processes the invoice.</li>
+           <li>You can view the documents while processing occurs.</li>
+         </ul>
+      `;
+      helpModal.style.display = "flex";
+    }
+
+    function closeHelpModal() {
+      document.getElementById("helpModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("helpModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script>
+{% endblock %}

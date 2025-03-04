@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Supervisor Control Level{% endblock %}
+
+{% block content %}
+
+  <div class="headline">Supervisor intervention needed!</div>
+
+  <div class="supervisory-control-container">
+    <div class="pdf-view">
+      <h3>Purchase Order</h3>
+      <embed src="/show_purchase" type="application/pdf" width="100%" height="600px" />
+    </div>
+    <div class="pdf-view">
+      <h3>Invoice</h3>
+      <embed src="/show_invoice" type="application/pdf" width="100%" height="600px" />
+    </div>
+  </div>
+
+  <hr>
+
+  {# Section for displaying identified issues and for supervisor input #}
+  <div class="supervisory-error-container">
+    <div class="error-section">
+      {# Display the table of issues identified by the AI #}
+      <div class="error-box">
+        <h3>Identified Issues:</h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 20%;">Error Type</th>
+              <th style="width: 40%;">Description</th>
+              <th style="width: 40%;">Suggested Fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            {# Loop over the errors passed from the backend #}
+            {% for err in errors %}
+            <tr>
+              <td><b>{{ err.error_type }}</b></td>
+              <td>{{ err.description }}</td>
+              <td>{{ err.correction }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <form id="supervisorForm" method="POST" action="{{ url_for('supervisor_note') }}">
+        <p>
+          <label>Supervisor Note (required):</label><br>
+          <textarea name="supervisor_note" rows="4" cols="50" required></textarea>
+        </p>
+        <input type="hidden" id="booking_decision" name="booking_decision" value="book">
+        <div class="button-container">
+          <button class="submit-btn" type="submit" onclick="setBooking('book')" style="color: white; padding: 1rem;">
+            Submit
+          </button>
+          <button class="decline-btn" type="submit" onclick="setBooking('decline')" style="color: white; padding: 1rem;">
+            Decline
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function setBooking(value) {
+      document.getElementById("booking_decision").value = value;
+    }
+  </script>
+
+  {# Code for the modal view #}
+  <button class="help-btn" onclick="openHelpModal()">Help</button>
+
+  <script>
+    function openHelpModal() {
+      if (document.getElementById("helpModal")) {
+        document.getElementById("helpModal").style.display = "flex";
+        return;
+      }
+
+      const helpModal = document.createElement("div");
+      helpModal.id = "helpModal";
+      helpModal.className = "modal";
+      helpModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close" onclick="closeHelpModal()">&#10006;</span> 
+          <h1>Manual Level - Explanation</h1>
+          <p id="helpText">Loading help...</p>
+        </div>
+      `;
+      document.body.appendChild(helpModal);
+
+      const helpText = document.getElementById("helpText");
+      const pageTitle = document.title.toLowerCase();
+
+      helpText.innerHTML = `
+         <h2>Basic invoice requirements:</h2>
+         <p>The following elements are essential for an invoice to be valid:</p>
+         <ul>
+             <li>Full name of the issuer</li>
+             <li>Order ID</li>
+             <li>Order Date</li>
+             <li>Quantity and description of delivered products</li>
+         </ul>
+         <p>If any of these details are missing, the invoice must be <strong>declined</strong>.</p>
+         
+         <h2>Handling minor issues:</h2>
+         <p>Minor mistakes, such as:</p>
+         <ul>
+             <li>Typographical errors</li>
+             <li>Swapped digits</li>
+         </ul>
+         <p>can be corrected, and the invoice may still be submitted.</p>
+         
+         <h2>Critical issues requiring rejection:</h2>
+         <p>The following issues <strong>must</strong> result in invoice rejection:</p>
+         <ul>
+             <li>Missing essential details as listed above</li>
+             <li>Incorrect total price</li>
+         </ul>
+         <p>Beyond these rules, it is your responsibility to decide whether an invoice should be submitted or declined.</p>
+      `;
+      helpModal.style.display = "flex";
+    }
+
+    function closeHelpModal() {
+      document.getElementById("helpModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("helpModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script>
+
+{% endblock %}

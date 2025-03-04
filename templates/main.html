@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <h1>Welcome to the Invoice Verification Test!</h1>
+  <p>Please enter your ID:</p>
+  
+  <form method="POST" action="">
+    <input type="text" name="user_id" required>
+    <button type="submit">Start</button>
+  </form>
+</div>
+{% endblock %}

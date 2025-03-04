@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Cooperative Level{% endblock %}
+
+{% block content %}
+  <div class="cooperative-container">
+    <h1>Cooperative Level</h1>
+
+    <div class="container">
+      <div class="pdf-view">
+        <h3>Purchase Order</h3>
+        <embed src="{{ url_for("show_purchase") }}" type="application/pdf" />
+      </div>
+      <div class="pdf-view">
+        <h3>Invoice</h3>
+        <embed src="{{ url_for("show_invoice") }}" type="application/pdf" />
+      </div>
+    </div>
+    <hr>
+    
+    {% if errors %}
+      <div class="cooperative-error-container">
+        <div class="error-box">
+          <h3>Identified Issues:</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20%;">Error Type</th>
+                <th style="width: 40%;">Description</th>
+                <th style="width: 40%;">Suggested Fix</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for err in errors %}
+              <tr>
+                <td><b>{{ err.error_type }}</b></td>
+                <td>{{ err.description }}</td>
+                <td>{{ err.correction }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="success-message">
+        <h3>No issues found!</h3>
+      </div>
+    {% endif %}
+
+    {% if ai_response %}
+      <div class="ai-response">
+        <h2>AI response:</h2>
+        <pre>{{ ai_response|safe }}</pre>
+      </div>
+    {% endif %}
+
+    {# Decision Form allowing the user to provide their decision #}
+    <form id="cooperativeForm" method="POST" action="{{ url_for("cooperative_decision") }}">
+      {# Hidden fields to store decision values #}
+      <input type="hidden" name="first_decision" id="first_decision" value="{{ session.get("current_first_decision", '') }}">
+      <input type="hidden" name="second_decision" id="second_decision" value="{{ session.get("current_second_decision", '') }}">
+      <input type="hidden" name="ai_instructions" id="ai_instructions_hidden" value="">
+      <input type="hidden" name="booking_decision" id="booking_decision">
+      
+      {# Display different question blocks based on flags in the session #}
+      {% if not show_second_decision and not show_ai_instructions %}
+        {# Question 1 #}
+        <div class="button-group" id="first_question">
+          <h3>Can the invoice be booked?</h3>
+          <button class="submit-btn" type="button" onclick="handleFirstDecision('ok')">Yes, submit</button>
+          <button class="decline-btn" type="button" onclick="handleFirstDecision('not_ok')">No</button>
+        </div>
+      
+      {% elif show_second_decision %}
+        {# Question 2 #}
+        <div class="button-group" id="second_decision_wrapper">
+          <h3>Should the AI check and correct again?</h3>
+          <button class="submit-btn" type="button" onclick="handleSecondDecision('ai_fix')">Yes, please</button>
+          <button class="decline-btn" type="button" onclick="handleSecondDecision('no_fix')">No, decline</button>
+        </div>
+      
+      {% elif show_ai_instructions %}
+        {# Allow user to input instructions for the AI #}
+        <div id="button-group">
+          <h3>Input your instructions to the AI here:</h3>
+          <textarea id="ai_instructions" name="ai_instructions" rows="4" placeholder="Enter your instructions"></textarea>
+          <br>
+          <button class="submit-btn" type="button" onclick="submitAiFix()">Submit Message</button>
+        </div>
+      {% endif %}
+    </form>
+  </div>
+
+  {# JavaScript for handling decision form submission #}
+  <script>
+    function handleFirstDecision(decision) {
+      document.getElementById("first_decision").value = decision;
+      document.getElementById("second_decision").value = "";
+      if (decision === "ok") {
+        document.getElementById("booking_decision").value = "book";
+      }
+      document.getElementById("cooperativeForm").submit();
+    }
+
+    function handleSecondDecision(decision) {
+      document.getElementById("second_decision").value = decision;
+      if (decision === "no_fix") {
+        document.getElementById("booking_decision").value = "decline";
+      }
+      document.getElementById("cooperativeForm").submit();
+    }
+
+    function submitAiFix() {
+      const instructions = document.getElementById("ai_instructions").value.trim();
+      if (!instructions) {
+        alert("Please enter your instructions for the correction.");
+        return;
+      }
+      document.getElementById("ai_instructions_hidden").value = instructions;
+      document.getElementById("cooperativeForm").submit();
+    }
+
+    function cancelAiFix() {
+      fetch("/reset_fix_state", { method: "POST" })
+        .then(() => {
+          document.getElementById("second_decision").value = "no_fix";
+          document.getElementById("cooperativeForm").submit();
+        });
+    }
+  </script>
+
+  {# Code for the modal view #}
+  <button class="help-btn" onclick="openHelpModal()">Help</button>
+
+  <script>
+    function openHelpModal() {
+      if (document.getElementById("helpModal")) {
+        document.getElementById("helpModal").style.display = "flex";
+        return;
+      }
+      const helpModal = document.createElement("div");
+      helpModal.id = "helpModal";
+      helpModal.className = "modal";
+      helpModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close" onclick="closeHelpModal()">&#10006;</span> 
+          <h1>Cooperative Level - Explanation</h1>
+          <p id="helpText">Loading help...</p>
+        </div>
+      `;
+      document.body.appendChild(helpModal);
+      
+      const helpText = document.getElementById("helpText");
+      const pageTitle = document.title.toLowerCase();
+      helpText.innerHTML = `
+         <h2>Basic invoice requirements:</h2>
+         <p>The following elements are essential for an invoice to be valid:</p>
+         <ul>
+             <li>Full name of the issuer</li>
+             <li>Order ID</li>
+             <li>Order Date</li>
+             <li>Quantity and description of delivered products</li>
+         </ul>
+         <p>If any of these details are missing, the invoice must be <strong>declined</strong>.</p>
+         
+         <h2>Handling minor issues:</h2>
+         <p>Minor mistakes, such as:</p>
+         <ul>
+             <li>Typographical errors</li>
+             <li>Swapped digits</li>
+         </ul>
+         <p>can be corrected, and the invoice may still be submitted.</p>
+         
+         <h2>Critical issues requiring rejection:</h2>
+         <p>The following issues <strong>must</strong> result in invoice rejection:</p>
+         <ul>
+             <li>Missing essential details as listed above</li>
+             <li>Incorrect total price</li>
+         </ul>
+         <p>Beyond these rules, it is your responsibility to decide whether an invoice should be submitted or declined.</p>
+      `;
+      helpModal.style.display = "flex";
+    }
+
+    function closeHelpModal() {
+      document.getElementById("helpModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("helpModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script>
+
+  {# Smooth scroll to the bottom of the page on load #}
+  <script>
+    window.addEventListener("load", () => {
+      const target = document.scrollingElement || document.documentElement;
+      target.scrollTo({
+        top: target.scrollHeight,
+        behavior: "smooth"
+      });
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Assistive Level{% endblock %}
+
+{% block content %}
+  <div class="headline">Assistive Level</div>
+
+  <div class="assistive-container">
+    <div class="pdf-view">
+      <h3>Purchase Order</h3>
+      <embed src="{{ url_for('show_purchase') }}" type="application/pdf" />
+    </div>
+    <div class="pdf-view">
+      <h3>Invoice</h3>
+      <embed src="{{ url_for('show_invoice') }}" type="application/pdf" />
+    </div>
+  </div>
+  <hr>
+
+  {% if suggestions %}
+    <div class="ai-suggestions">
+      <h3>AI hints</h3>
+      <ul id="ai-hints">
+        {% for suggestion in suggestions.split("\n") %}
+          <li>{{ suggestion }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <div class="success-message">
+      <h3>No issues found!</h3>
+    </div>
+  {% endif %}
+
+  <div class="assistive-error-container">
+    <div class="error-section">
+      <h3>Report Issue</h3>
+      <button type="button" id="addErrorBtn">+</button>
+
+      <form id="mainForm" method="POST" action="{{ url_for('assistive_submit') }}">
+        <input type="hidden" name="booking_decision" id="booking_decision" value="book">
+        <div id="errorContainer"></div>
+        <p>
+          <button class="submit-btn" type="submit" onclick="document.getElementById('booking_decision').value='book'">
+            Submit
+          </button>
+          <button class="decline-btn" type="submit" onclick="document.getElementById('booking_decision').value='decline'">
+            Decline
+          </button>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  {# JavaScript section for dynamic error block handling and form validation #}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const addErrorBtn = document.getElementById('addErrorBtn');
+      const errorContainer = document.getElementById('errorContainer');
+      let errorCount = 0;
+
+      addErrorBtn.addEventListener('click', function() {
+        errorCount++;
+        const errorBlock = createErrorBlock(errorCount);
+        errorContainer.appendChild(errorBlock);
+        const inputs = errorBlock.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+          input.addEventListener('change', debounce(updateAISuggestions, 500));
+        });
+      });
+    });
+
+    // Function to create a new error block dynamically
+    function createErrorBlock(count) {
+      const errorBlock = document.createElement('div');
+      errorBlock.className = 'error-block';
+      errorBlock.id = `errorBlock_${count}`;
+      errorBlock.innerHTML = `
+        <button type="button" class="remove-btn" onclick="removeBlock('${errorBlock.id}')">X</button>
+        <p>
+          <label>Type of error:</label><br>
+          <select name="error_type_${count}" required>
+            <option value="">--Please choose--</option>
+            <option value="Order ID">Order ID</option>
+            <option value="Date">Date</option>
+            <option value="Contact Name">Contact Name</option>
+            <option value="Product ID">Product ID</option>
+            <option value="Product Name">Product Name</option>
+            <option value="Quantity">Quantity</option>
+            <option value="Unit Price">Unit Price</option>
+            <option value="Total Price">Total Price</option>
+            <option value="Product is missing">Product is missing</option>
+            <option value="Other">Other</option>
+          </select>
+        </p>
+        <p>
+          <label>Product ID (if needed):</label><br>
+          <input type="text" name="product_id_${count}" />
+        </p>
+        <p>
+          <label>Correction:</label><br>
+          <input type="text" name="correction_${count}" />
+        </p>
+        <p>
+          <label>Notes:</label><br>
+          <textarea name="free_text_${count}" rows="3" cols="40"></textarea>
+        </p>
+      `;
+      return errorBlock;
+    }
+
+    // Function to remove an error block by its ID and update AI suggestions afterwards
+    function removeBlock(blockId) {
+      const block = document.getElementById(blockId);
+      if (block) {
+        block.remove();
+        updateAISuggestions();
+      }
+    }
+
+    // Debounce function to delay execution updateAISuggestions
+    function debounce(func, timeout = 500) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+      };
+    }
+
+    // Collect form data from error blocks
+    function collectFormData() {
+      const errorBlocks = document.querySelectorAll('.error-block');
+      return Array.from(errorBlocks).map(block => {
+        const typeSelect = block.querySelector('select[name^="error_type_"]');
+        const correctionInput = block.querySelector('input[name^="correction_"]');
+        const productIdInput = block.querySelector('input[name^="product_id_"]');
+        const notesTextarea = block.querySelector('textarea[name^="free_text_"]');
+        return {
+          type: typeSelect ? typeSelect.value : '',
+          correction: correctionInput ? correctionInput.value : '',
+          product_id: productIdInput ? productIdInput.value : '',
+          notes: notesTextarea ? notesTextarea.value : ''
+        };
+      }).filter(data => data.type && data.correction);
+    }
+
+    // Function to update AI suggestions based on the current error blocks
+    function updateAISuggestions() {
+      const errorBlocks = Array.from(document.querySelectorAll('.error-block'));
+      const formData = {
+        errors: errorBlocks.map(block => ({
+          type: block.querySelector('[name^="error_type_"]')?.value
+        })).filter(e => e.type),
+        corrections: errorBlocks.map(block => ({
+          type: block.querySelector('[name^="error_type_"]')?.value,
+          correction: block.querySelector('[name^="correction_"]')?.value
+        })).filter(c => c.correction && c.type)
+      };
+
+      fetch("/get_dynamic_suggestions", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(formData)
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          let suggestions = data.suggestions || "";
+          if (suggestions.trim() === "") {
+              document.getElementById("ai-hints").innerHTML = "";
+          } else {
+              const suggestionItems = suggestions.split('\n')
+                .filter(s => s.trim().length > 0)
+                .map(s => `<li>${s}</li>`)
+                .join('');
+              document.getElementById("ai-hints").innerHTML = suggestionItems;
+          }
+      })
+      .catch(error => {
+          console.error("Fetch error:", error);
+          document.getElementById("ai-hints").innerHTML =
+              '<li class="error">Suggestions currently unavailable</li>';
+      });
+    }
+
+    // Ensure at least one of "Correction" or "Notes" is filled for each error block
+    document.getElementById('mainForm').addEventListener('submit', function(event) {
+      let valid = true;
+      const errorBlocks = document.querySelectorAll('.error-block');
+
+      errorBlocks.forEach((block) => {
+        const correction = block.querySelector('[name^="correction_"]').value.trim();
+        const notes = block.querySelector('[name^="free_text_"]').value.trim();
+
+        if (!correction && !notes) {
+          valid = false;
+          block.style.border = "2px solid red";
+        } else {
+          block.style.border = "";
+        }
+      });
+
+      if (!valid) {
+        event.preventDefault();
+        alert("Please fill in at least 'Correction' or 'Notes'.");
+      }
+    });
+  </script>
+
+  {# Code for the modal view #}
+  <button class="help-btn" onclick="openHelpModal()">Help</button>
+
+  <script>
+    function openHelpModal() {
+      if (document.getElementById("helpModal")) {
+        document.getElementById("helpModal").style.display = "flex";
+        return;
+      }
+
+      const helpModal = document.createElement("div");
+      helpModal.id = "helpModal";
+      helpModal.className = "modal";
+      helpModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close" onclick="closeHelpModal()">&#10006;</span> 
+          <h1>Assistive Level - Explanation</h1>
+          <p id="helpText">Loading help...</p>
+        </div>
+      `;
+      document.body.appendChild(helpModal);
+
+      const helpText = document.getElementById("helpText");
+      const pageTitle = document.title.toLowerCase();
+
+      helpText.innerHTML = `
+         <h2>Basic invoice requirements:</h2>
+         <p>The following elements are essential for an invoice to be valid:</p>
+         <ul>
+             <li>Full name of the issuer</li>
+             <li>Order ID</li>
+             <li>Order Date</li>
+             <li>Quantity and description of delivered products</li>
+         </ul>
+         <p>If any of these details are missing, the invoice must be <strong>declined</strong>.</p>
+         
+         <h2>Handling minor issues:</h2>
+         <p>Minor mistakes, such as:</p>
+         <ul>
+             <li>Typographical errors</li>
+             <li>Swapped digits</li>
+         </ul>
+         <p>can be corrected, and the invoice may still be submitted.</p>
+         
+         <h2>Critical issues requiring rejection:</h2>
+         <p>The following issues <strong>must</strong> result in invoice rejection:</p>
+         <ul>
+             <li>Missing essential details as listed above</li>
+             <li>Incorrect total price</li>
+         </ul>
+         <p>Beyond these rules, it is your responsibility to decide whether an invoice should be submitted or declined.</p>
+      `;
+      helpModal.style.display = "flex";
+    }
+
+    function closeHelpModal() {
+      document.getElementById("helpModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("helpModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script>
+
+  {# Smooth scroll to bottom on page load #}
+  <script>
+    window.addEventListener("load", () => {
+      const target = document.scrollingElement || document.documentElement;
+      target.scrollTo({
+        top: target.scrollHeight,
+        behavior: 'smooth'
+      });
+    });
+  </script>
+  
+{% endblock %}
